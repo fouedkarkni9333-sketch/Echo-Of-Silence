@@ -10,7 +10,7 @@ let visibilityFrames = 0;
 let baseSpeed = 3.5;
 let currentLevel = 1;
 
-// بيانات البطل (شخصية واقعية انسيابية)
+// Player Data
 const player = {
     x: 80,
     y: 240,
@@ -26,7 +26,7 @@ let particles = [];
 let echoRings = [];
 let frameCounter = 0;
 
-// ثيمات المستويات بتصميم بصري عالي الدقة
+// Level Themes
 const levelThemes = [
     { bg: "#0d1117", pipe: "#238636", pipeGlow: "#2ea043", player: "#58a6ff" },
     { bg: "#1f1025", pipe: "#8957e5", pipeGlow: "#a371f7", player: "#f0883e" },
@@ -37,9 +37,8 @@ function getTheme() {
     return levelThemes[Math.min(currentLevel - 1, levelThemes.length - 1)];
 }
 
-// توليد حواجز واقعية تشبه أنابيب Flappy Bird ولكن بنمط عمودي/أفقي متطور
 function spawnObstacle() {
-    const gapHeight = 130; // الفجوة بين الحواجز
+    const gapHeight = 130;
     const minHeight = 50;
     const maxHeight = canvas.height - gapHeight - 100;
     const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
@@ -67,7 +66,6 @@ function createParticles(x, y, color) {
     }
 }
 
-// تفعيل الصدى والقفز
 function triggerEcho() {
     visibilityFrames = 50;
     player.velocityY = player.jumpPower;
@@ -90,12 +88,10 @@ function update() {
     currentLevel = Math.floor(score / 50) + 1;
     let speed = baseSpeed + (currentLevel - 1) * 0.8;
 
-    // فيزياء السقوط والدوران مثل الفلابي
     player.velocityY += player.gravity;
     player.y += player.velocityY;
     player.rotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, player.velocityY * 0.08));
 
-    // اصطدام الأرض أو السقف
     if (player.y > canvas.height - 50 || player.y < 20) {
         gameOver();
     }
@@ -106,12 +102,10 @@ function update() {
         spawnObstacle();
     }
 
-    // حركة العقبات والاصطدام
     for (let i = obstacles.length - 1; i >= 0; i--) {
         let obs = obstacles[i];
         obs.x -= speed;
 
-        // فحص الاصطدام الدقيق بالحواجز
         if (
             player.x + player.radius > obs.x &&
             player.x - player.radius < obs.x + obs.width &&
@@ -121,7 +115,6 @@ function update() {
             gameOver();
         }
 
-        // حساب النقاط عند تجاوز الحجز
         if (obs.x + obs.width < player.x && !obs.passed) {
             obs.passed = true;
             score += 10;
@@ -153,11 +146,9 @@ function update() {
 function draw() {
     const theme = getTheme();
 
-    // 1. خلفية واقعية متدرجة
     ctx.fillStyle = theme.bg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. إضاءة الصدى الاحترافية (Radial Lighting)
     if (visibilityFrames > 0 || echoRings.length > 0) {
         let currentRadius = (50 - visibilityFrames) * 5 + 40;
         let gradient = ctx.createRadialGradient(
@@ -172,7 +163,6 @@ function draw() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // 3. رسم الجزيئات المتناثرة
     particles.forEach(p => {
         ctx.fillStyle = p.color;
         ctx.shadowBlur = 8;
@@ -181,35 +171,27 @@ function draw() {
     });
     ctx.shadowBlur = 0;
 
-    // 4. رسم العقبات الواقعية (تظهر بوضوح عند الصدى)
     if (visibilityFrames > 0) {
         ctx.shadowBlur = 15;
         ctx.shadowColor = theme.pipeGlow;
         ctx.fillStyle = theme.pipe;
 
         obstacles.forEach(obs => {
-            // الحاجز العلوي
             ctx.fillRect(obs.x, 0, obs.width, obs.top);
-            // الحاجز السفلي
             ctx.fillRect(obs.x, obs.bottom, obs.width, canvas.height - obs.bottom);
         });
         ctx.shadowBlur = 0;
 
-        // رسم البطل بتصميم واقعي ومجسّم
         drawRealisticPlayer(player.x, player.y, true);
-
         visibilityFrames--;
     } else {
-        // خيال خفيف جداً للبطل في الظلام
         drawRealisticPlayer(player.x, player.y, false);
     }
 
-    // 5. الأرضية السفلية
     ctx.fillStyle = "#161b22";
     ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
 }
 
-// دالة رسم الشخصية الواقعية والمجسّمة
 function drawRealisticPlayer(x, y, isVisible) {
     ctx.save();
     ctx.translate(x, y);
@@ -218,7 +200,6 @@ function drawRealisticPlayer(x, y, isVisible) {
     let alpha = isVisible ? 1 : 0.2;
     const theme = getTheme();
 
-    // جسم الكائن الواقعي (دائرة متدرجة مع لمعان)
     ctx.beginPath();
     ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
     ctx.fillStyle = isVisible ? theme.player : `rgba(88, 166, 255, ${alpha})`;
@@ -228,7 +209,6 @@ function drawRealisticPlayer(x, y, isVisible) {
     }
     ctx.fill();
 
-    // العين الواقعية
     ctx.beginPath();
     ctx.arc(6, -4, 4, 0, Math.PI * 2);
     ctx.fillStyle = isVisible ? "#ffffff" : `rgba(255,255,255,${alpha})`;
@@ -239,7 +219,6 @@ function drawRealisticPlayer(x, y, isVisible) {
     ctx.fillStyle = "#000000";
     ctx.fill();
 
-    // المنقار أو التفاصيل الأمامية
     ctx.beginPath();
     ctx.moveTo(12, 0);
     ctx.lineTo(20, 3);
@@ -258,7 +237,7 @@ function gameOver() {
         document.getElementById("high-score").innerText = highScore;
     }
     setTimeout(() => {
-        alert(`انتهت اللعبة! مجموع نقاطك: ${score}`);
+        alert(`Game Over! Score: ${score}`);
         resetGame();
     }, 150);
 }
@@ -276,7 +255,7 @@ function resetGame() {
     update();
 }
 
-// 🎤 نظام فلترة الصوت البشري الدقيق
+// Microphone Human Voice Filter
 async function initMic() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -291,7 +270,7 @@ async function initMic() {
         const dataArray = new Uint8Array(bufferLength);
         const sampleRate = audioContext.sampleRate;
 
-        document.getElementById("mic-status").innerText = "🎤 الميكروفون مفعل بنجاح (يتفاعل مع الصوت البشري فقط)!";
+        document.getElementById("mic-status").innerText = "Microphone Active (Human Voice Filter Enabled)!";
         document.getElementById("mic-btn").style.display = "none";
 
         let lastTriggerTime = 0;
@@ -326,7 +305,7 @@ async function initMic() {
         }
         checkHumanVoice();
     } catch (err) {
-        alert("تعذر الوصول للميكروفون، يمكنك اللعب بالضغط على الأزرار.");
+        alert("Microphone access denied. You can play using the tap button.");
     }
 }
 
