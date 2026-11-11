@@ -10,16 +10,17 @@ let visibilityFrames = 0;
 let baseSpeed = 4;
 let currentLevel = 1;
 
-// بيانات البطل
+// بيانات البطل (الإنسان الواقعي)
 const player = {
-    x: 50,
-    y: 380,
-    size: 26,
+    x: 60,
+    y: 360,
+    width: 22,
+    height: 38,
     velocityY: 0,
     gravity: 0.65,
     jumpPower: -11.5,
     isGrounded: true,
-    color: "#00f3ff"
+    animFrame: 0
 };
 
 let obstacles = [];
@@ -29,9 +30,9 @@ let frameCounter = 0;
 
 // ألوان ومؤثرات المستويات
 const levelThemes = [
-    { bg: "#04060c", player: "#00f3ff", obs: "#ff2a5f", light: "0, 243, 255" },
-    { bg: "#0a0412", player: "#b055ff", obs: "#ffaa00", light: "176, 85, 255" },
-    { bg: "#0c0303", player: "#ff3366", obs: "#00ffcc", light: "255, 51, 102" }
+    { bg: "#04060c", obs: "#ff2a5f", light: "0, 243, 255" },
+    { bg: "#0a0412", obs: "#ffaa00", light: "176, 85, 255" },
+    { bg: "#0c0303", obs: "#00ffcc", light: "255, 51, 102" }
 ];
 
 function getTheme() {
@@ -54,8 +55,8 @@ function createParticles(x, y, color) {
         particles.push({
             x: x,
             y: y,
-            vx: (Math.random() - 0.5) * 7,
-            vy: (Math.random() - 0.5) * 7,
+            vx: (Math.random() - 0.5) * 6,
+            vy: (Math.random() - 0.5) * 6,
             size: Math.random() * 4 + 2,
             life: 25,
             color: color
@@ -63,24 +64,23 @@ function createParticles(x, y, color) {
     }
 }
 
-// كشف الخريطة والقفز
+// كشف الخريطة والقفز البشري
 function triggerEcho() {
     visibilityFrames = 45;
-    const theme = getTheme();
-
+    
     echoRings.push({
-        x: player.x + player.size / 2,
-        y: player.y + player.size / 2,
+        x: player.x + player.width / 2,
+        y: player.y + player.height / 2,
         radius: 10,
         maxRadius: 220,
         alpha: 1,
-        color: theme.player
+        color: "#00f3ff"
     });
 
     if (player.isGrounded) {
         player.velocityY = player.jumpPower;
         player.isGrounded = false;
-        createParticles(player.x + 13, player.y + 26, theme.player);
+        createParticles(player.x + 11, player.y + 38, "#00f3ff");
     }
 }
 
@@ -90,13 +90,19 @@ function update() {
     currentLevel = Math.floor(score / 50) + 1;
     let speed = baseSpeed + (currentLevel - 1) * 1.2;
 
+    // الجاذبية وحركة الإنسان الواقعية
     player.velocityY += player.gravity;
     player.y += player.velocityY;
 
-    if (player.y >= 380) {
-        player.y = 380;
+    if (player.y >= 360) {
+        player.y = 360;
         player.velocityY = 0;
         player.isGrounded = true;
+    }
+
+    // حركة الأرجل أثناء الجري
+    if (player.isGrounded) {
+        player.animFrame += 0.2;
     }
 
     frameCounter++;
@@ -109,14 +115,14 @@ function update() {
         let obs = obstacles[i];
         obs.x -= speed;
 
-        // اصطدام
+        // فحص الاصطدام بدقة مع حجم الإنسان
         if (
             player.x < obs.x + obs.width &&
-            player.x + player.size > obs.x &&
+            player.x + player.width > obs.x &&
             player.y < obs.y + obs.height &&
-            player.y + player.size > obs.y
+            player.y + player.height > obs.y
         ) {
-            createParticles(player.x + 13, player.y + 13, "#ff2a5f");
+            createParticles(player.x + 11, player.y + 19, "#ff2a5f");
             gameOver();
         }
 
@@ -161,12 +167,12 @@ function draw() {
     ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
     ctx.fillRect(0, 404, canvas.width, 2);
 
-    // 3. إضاءة واقعية متدرجة (Dynamic Radial Lighting)
+    // 3. إضاءة الصدى الدائرية
     if (visibilityFrames > 0 || echoRings.length > 0) {
         let currentRadius = (45 - visibilityFrames) * 5 + 30;
         let gradient = ctx.createRadialGradient(
-            player.x + 13, player.y + 13, 10,
-            player.x + 13, player.y + 13, Math.max(50, currentRadius)
+            player.x + 11, player.y + 19, 10,
+            player.x + 11, player.y + 19, Math.max(50, currentRadius)
         );
         gradient.addColorStop(0, `rgba(${theme.light}, 0.35)`);
         gradient.addColorStop(0.5, `rgba(${theme.light}, 0.1)`);
@@ -176,7 +182,7 @@ function draw() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // 4. رسم الجزيئات الحركية
+    // 4. الجزيئات
     particles.forEach(p => {
         ctx.fillStyle = p.color;
         ctx.shadowBlur = 6;
@@ -185,29 +191,57 @@ function draw() {
     });
     ctx.shadowBlur = 0;
 
-    // 5. إظهار العناصر الواقعية أثناء الصدى
+    // 5. رسم الإنسان الواقعي عند الصدى
     if (visibilityFrames > 0) {
-        // البطل المتوهج
-        ctx.fillStyle = theme.player;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = theme.player;
-        ctx.fillRect(player.x, player.y, player.size, player.size);
-
-        // العقبات الفسفورية
+        drawHumanCharacter(player.x, player.y, true);
+        
+        // العقبات
         ctx.shadowBlur = 12;
         ctx.shadowColor = theme.obs;
         ctx.fillStyle = theme.obs;
         obstacles.forEach(obs => {
             ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
         });
-
         ctx.shadowBlur = 0;
         visibilityFrames--;
     } else {
-        // خيال بسيط جداً للبطل
-        ctx.fillStyle = `rgba(${theme.light}, 0.18)`;
-        ctx.fillRect(player.x, player.y, player.size, player.size);
+        // خيال باهت جداً للإنسان في الظلام
+        drawHumanCharacter(player.x, player.y, false);
     }
+}
+
+// دالة رسم تفاصيل الإنسان الواقعي
+function drawHumanCharacter(x, y, isVisible) {
+    ctx.save();
+    if (isVisible) {
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = "#00f3ff";
+    }
+
+    let alpha = isVisible ? 1 : 0.25;
+    
+    // الرأس
+    ctx.fillStyle = isVisible ? "#00f3ff" : `rgba(0, 243, 255, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(x + 11, y + 8, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // الجسم (الجذع)
+    ctx.fillRect(x + 8, y + 16, 6, 14);
+
+    // الأذرع والأرجل المتحركة واقعياً
+    let legOffset = Math.sin(player.animFrame) * 4;
+    if (!player.isGrounded) legOffset = 4; // ضم الأرجل عند القفز
+
+    // اليدين
+    ctx.fillRect(x + 4, y + 18, 3, 10);
+    ctx.fillRect(x + 15, y + 18, 3, 10);
+
+    // الرجلين
+    ctx.fillRect(x + 7, y + 30, 3, 8 + legOffset);
+    ctx.fillRect(x + 12, y + 30, 3, 8 - legOffset);
+
+    ctx.restore();
 }
 
 function gameOver() {
@@ -230,12 +264,12 @@ function resetGame() {
     particles = [];
     echoRings = [];
     document.getElementById("score").innerText = score;
-    player.y = 380;
+    player.y = 360;
     isPlaying = true;
     update();
 }
 
-// 🎤 نظام التقاط صوت الإنسان الفعلي (Voice Pitch & Voice Frequency Filter)
+// 🎤 نظام التقاط الصوت البشري المفلتر
 async function initMic() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -250,7 +284,7 @@ async function initMic() {
         const dataArray = new Uint8Array(bufferLength);
         const sampleRate = audioContext.sampleRate;
 
-        document.getElementById("mic-status").innerText = "🎤 تم تفعيل فلتر الصوت البشري! اللعبة تتفاعل مع صوتك فقط وتقاوم الضوضاء.";
+        document.getElementById("mic-status").innerText = "🎤 تم تفعيل فلتر الصوت البشري بنجاح!";
         document.getElementById("mic-btn").style.display = "none";
 
         let lastTriggerTime = 0;
@@ -266,8 +300,6 @@ async function initMic() {
                 let volume = dataArray[i];
 
                 totalEnergy += volume;
-
-                // نطاق الترددات الخاص بصوت الإنسان والصفير الفعلي (85Hz - 2000Hz)
                 if (frequency >= 85 && frequency <= 2000) {
                     humanVoiceEnergy += volume;
                 }
@@ -278,7 +310,6 @@ async function initMic() {
 
             let now = Date.now();
 
-            // يتفاعل فقط إذا كان الصوت ينتمي لتردد الصوت البشري وشدته أعلى من الضجيج
             if (avgHumanVolume > 35 && voiceRatio > 0.55 && (now - lastTriggerTime > 280)) {
                 triggerEcho();
                 lastTriggerTime = now;
@@ -288,4 +319,8 @@ async function initMic() {
         }
         checkHumanVoice();
     } catch (err) {
-        alert("تعذر استخدام الميكروفون، يمكنك
+        alert("تعذر استخدام الميكروفون، يمكنك الضغط على زر الصدى للقفز.");
+    }
+}
+
+update();
