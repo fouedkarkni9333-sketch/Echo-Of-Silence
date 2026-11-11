@@ -14,26 +14,24 @@ let currentLevel = 1;
 const player = {
     x: 50,
     y: 380,
-    size: 24,
+    size: 26,
     velocityY: 0,
-    gravity: 0.6,
-    jumpPower: -11,
+    gravity: 0.65,
+    jumpPower: -11.5,
     isGrounded: true,
-    color: "#00d2d3"
+    color: "#00f3ff"
 };
 
-// المصفوفات للمحيط والجزيئات
 let obstacles = [];
 let particles = [];
 let echoRings = [];
 let frameCounter = 0;
 
-// الألوان حسب المستوى
+// ألوان ومؤثرات المستويات
 const levelThemes = [
-    { bg: "#050508", player: "#00d2d3", obs: "#ff4757" }, // level 1
-    { bg: "#0a0512", player: "#a29bfe", obs: "#fd79a8" }, // level 2
-    { bg: "#0c0600", player: "#ffeaa7", obs: "#e17055" }, // level 3
-    { bg: "#05100a", player: "#55efc4", obs: "#d63031" }  // level 4+
+    { bg: "#04060c", player: "#00f3ff", obs: "#ff2a5f", light: "0, 243, 255" },
+    { bg: "#0a0412", player: "#b055ff", obs: "#ffaa00", light: "176, 85, 255" },
+    { bg: "#0c0303", player: "#ff3366", obs: "#00ffcc", light: "255, 51, 102" }
 ];
 
 function getTheme() {
@@ -41,25 +39,25 @@ function getTheme() {
 }
 
 function spawnObstacle() {
-    const height = Math.floor(Math.random() * 35) + 30;
+    const height = Math.floor(Math.random() * 40) + 30;
     obstacles.push({
         x: canvas.width,
         y: 410 - height,
-        width: 22,
-        height: height
+        width: 24,
+        height: height,
+        passed: false
     });
 }
 
-// إضافة جزيئات بصريّة عند القفز
 function createParticles(x, y, color) {
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 10; i++) {
         particles.push({
             x: x,
             y: y,
-            vx: (Math.random() - 0.5) * 6,
-            vy: (Math.random() - 0.5) * 6,
+            vx: (Math.random() - 0.5) * 7,
+            vy: (Math.random() - 0.5) * 7,
             size: Math.random() * 4 + 2,
-            life: 20,
+            life: 25,
             color: color
         });
     }
@@ -67,15 +65,14 @@ function createParticles(x, y, color) {
 
 // كشف الخريطة والقفز
 function triggerEcho() {
-    visibilityFrames = 45; 
+    visibilityFrames = 45;
     const theme = getTheme();
-    
-    // إضافة موجة صدى ضوئية
+
     echoRings.push({
-        x: player.x + 12,
-        y: player.y + 12,
+        x: player.x + player.size / 2,
+        y: player.y + player.size / 2,
         radius: 10,
-        maxRadius: 180,
+        maxRadius: 220,
         alpha: 1,
         color: theme.player
     });
@@ -83,18 +80,16 @@ function triggerEcho() {
     if (player.isGrounded) {
         player.velocityY = player.jumpPower;
         player.isGrounded = false;
-        createParticles(player.x + 12, player.y + 24, theme.player);
+        createParticles(player.x + 13, player.y + 26, theme.player);
     }
 }
 
 function update() {
     if (!isPlaying) return;
 
-    // حساب المستوى والسرعة تدريجياً
     currentLevel = Math.floor(score / 50) + 1;
     let speed = baseSpeed + (currentLevel - 1) * 1.2;
 
-    // الجاذبية وحركة البطل
     player.velocityY += player.gravity;
     player.y += player.velocityY;
 
@@ -104,43 +99,38 @@ function update() {
         player.isGrounded = true;
     }
 
-    // إنشاء العقبات (تصبح أسرع وأقرب كلما تقدمت)
     frameCounter++;
-    let spawnRate = Math.max(50, 100 - (currentLevel * 8));
+    let spawnRate = Math.max(45, 90 - (currentLevel * 7));
     if (frameCounter % Math.floor(spawnRate) === 0) {
         spawnObstacle();
     }
 
-    // تحديث حركة العقبات والاصطدام
-    const theme = getTheme();
     for (let i = obstacles.length - 1; i >= 0; i--) {
         let obs = obstacles[i];
         obs.x -= speed;
 
-        // فحص الاصطدام
+        // اصطدام
         if (
             player.x < obs.x + obs.width &&
             player.x + player.size > obs.x &&
             player.y < obs.y + obs.height &&
             player.y + player.size > obs.y
         ) {
-            createParticles(player.x + 12, player.y + 12, "#ff4757");
+            createParticles(player.x + 13, player.y + 13, "#ff2a5f");
             gameOver();
         }
 
-        // زيادة النقاط
         if (obs.x + obs.width < player.x && !obs.passed) {
             obs.passed = true;
             score += 10;
             document.getElementById("score").innerText = score;
         }
 
-        if (obs.x < -30) {
+        if (obs.x < -40) {
             obstacles.splice(i, 1);
         }
     }
 
-    // تحديث الجزيئات والموجات
     particles.forEach((p, index) => {
         p.x += p.vx;
         p.y += p.vy;
@@ -149,8 +139,8 @@ function update() {
     });
 
     echoRings.forEach((r, index) => {
-        r.radius += 8;
-        r.alpha -= 0.03;
+        r.radius += 7;
+        r.alpha -= 0.025;
         if (r.alpha <= 0) echoRings.splice(index, 1);
     });
 
@@ -161,40 +151,49 @@ function update() {
 function draw() {
     const theme = getTheme();
 
-    // خلفية الظلام
+    // 1. خلفية الظلام
     ctx.fillStyle = theme.bg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // الأرضية
-    ctx.fillStyle = "#151520";
-    ctx.fillRect(0, 404, canvas.width, 76);
+    // 2. الأرضية
+    ctx.fillStyle = "#12131a";
+    ctx.fillRect(0, 406, canvas.width, 74);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+    ctx.fillRect(0, 404, canvas.width, 2);
 
-    // رسم حلقات الصدى
-    echoRings.forEach(r => {
-        ctx.strokeStyle = r.color;
-        ctx.globalAlpha = Math.max(0, r.alpha);
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-    });
+    // 3. إضاءة واقعية متدرجة (Dynamic Radial Lighting)
+    if (visibilityFrames > 0 || echoRings.length > 0) {
+        let currentRadius = (45 - visibilityFrames) * 5 + 30;
+        let gradient = ctx.createRadialGradient(
+            player.x + 13, player.y + 13, 10,
+            player.x + 13, player.y + 13, Math.max(50, currentRadius)
+        );
+        gradient.addColorStop(0, `rgba(${theme.light}, 0.35)`);
+        gradient.addColorStop(0.5, `rgba(${theme.light}, 0.1)`);
+        gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
 
-    // رسم الجزيئات المتناثرة
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // 4. رسم الجزيئات الحركية
     particles.forEach(p => {
         ctx.fillStyle = p.color;
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = p.color;
         ctx.fillRect(p.x, p.y, p.size, p.size);
     });
+    ctx.shadowBlur = 0;
 
-    // إظهار المحتوى عند الصدى
+    // 5. إظهار العناصر الواقعية أثناء الصدى
     if (visibilityFrames > 0) {
-        // اللاعب
+        // البطل المتوهج
         ctx.fillStyle = theme.player;
         ctx.shadowBlur = 15;
         ctx.shadowColor = theme.player;
         ctx.fillRect(player.x, player.y, player.size, player.size);
 
-        // العقبات
+        // العقبات الفسفورية
         ctx.shadowBlur = 12;
         ctx.shadowColor = theme.obs;
         ctx.fillStyle = theme.obs;
@@ -205,5 +204,88 @@ function draw() {
         ctx.shadowBlur = 0;
         visibilityFrames--;
     } else {
-        // خيال البطل في الظلام
-        ctx.fillStyle = "rgba(255, 255, 
+        // خيال بسيط جداً للبطل
+        ctx.fillStyle = `rgba(${theme.light}, 0.18)`;
+        ctx.fillRect(player.x, player.y, player.size, player.size);
+    }
+}
+
+function gameOver() {
+    isPlaying = false;
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("echo_high_score", highScore);
+        document.getElementById("high-score").innerText = highScore;
+    }
+    setTimeout(() => {
+        alert(`انتهت اللعبة عند المستوى ${currentLevel}! النتيجة: ${score}`);
+        resetGame();
+    }, 150);
+}
+
+function resetGame() {
+    score = 0;
+    currentLevel = 1;
+    obstacles = [];
+    particles = [];
+    echoRings = [];
+    document.getElementById("score").innerText = score;
+    player.y = 380;
+    isPlaying = true;
+    update();
+}
+
+// 🎤 نظام التقاط صوت الإنسان الفعلي (Voice Pitch & Voice Frequency Filter)
+async function initMic() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audioContext.createAnalyser();
+        const microphone = audioContext.createMediaStreamSource(stream);
+        
+        microphone.connect(analyser);
+        analyser.fftSize = 512;
+
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        const sampleRate = audioContext.sampleRate;
+
+        document.getElementById("mic-status").innerText = "🎤 تم تفعيل فلتر الصوت البشري! اللعبة تتفاعل مع صوتك فقط وتقاوم الضوضاء.";
+        document.getElementById("mic-btn").style.display = "none";
+
+        let lastTriggerTime = 0;
+
+        function checkHumanVoice() {
+            analyser.getByteFrequencyData(dataArray);
+
+            let humanVoiceEnergy = 0;
+            let totalEnergy = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                let frequency = (i * sampleRate) / analyser.fftSize;
+                let volume = dataArray[i];
+
+                totalEnergy += volume;
+
+                // نطاق الترددات الخاص بصوت الإنسان والصفير الفعلي (85Hz - 2000Hz)
+                if (frequency >= 85 && frequency <= 2000) {
+                    humanVoiceEnergy += volume;
+                }
+            }
+
+            let voiceRatio = humanVoiceEnergy / (totalEnergy || 1);
+            let avgHumanVolume = humanVoiceEnergy / (bufferLength / 4);
+
+            let now = Date.now();
+
+            // يتفاعل فقط إذا كان الصوت ينتمي لتردد الصوت البشري وشدته أعلى من الضجيج
+            if (avgHumanVolume > 35 && voiceRatio > 0.55 && (now - lastTriggerTime > 280)) {
+                triggerEcho();
+                lastTriggerTime = now;
+            }
+
+            requestAnimationFrame(checkHumanVoice);
+        }
+        checkHumanVoice();
+    } catch (err) {
+        alert("تعذر استخدام الميكروفون، يمكنك
